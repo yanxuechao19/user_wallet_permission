@@ -17,9 +17,11 @@ public class regist_with_idfdt {
     public static void main(String[] args) {
         StreamExecutionEnvironment env = new StreamExecutionEnvironment();
         // TODO 1. 读取业务主流
-        String topic = "growalong_prod";
-        String groupId = "growalong_prod_0702";
+        String topic = "gateway_data";
+        String groupId = "gateway_data_0712";
         DataStreamSource<String> coinDs = env.addSource(KafkaUtil.getKafkaConsumer(topic, groupId));
+        //DataStreamSource<String> coinDs = env.readTextFile("D:\\code\\commercial_on_ds\\input\\user_coin_log.txt");
+
 
 
     }
