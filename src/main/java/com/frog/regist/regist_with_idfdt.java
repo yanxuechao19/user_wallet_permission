@@ -64,10 +64,10 @@ public class regist_with_idfdt {
                 // /growAlong/v1/api/common/verifyThirdAccount
                 // /growAlong/v1/api/common/sendSmsV3
 
-                if(jsonObject.getJSONObject("responseData").getJSONObject("data").has){
+         /*       if(jsonObject.getJSONObject("responseData").getJSONObject("data").has){
 
 
-                }
+                }*/
 
 
 
@@ -77,7 +77,7 @@ public class regist_with_idfdt {
                             || jsonObject.getString("requestPath").contains("/growAlong/v1/api/common/verifyThirdAccount")
                             || jsonObject.getString("requestPath").contains("/growAlong/v1/api/common/sendSmsV3"))
 /*                            && jsonObject.getString("requestPath").length()>0*/
-                            && jsonObject.getJSONObject("responseData").getJSONObject("data").getJSONObject("dataObject").length()>0
+                            /*&& jsonObject.getJSONObject("responseData").getJSONObject("data").getJSONObject("dataObject").length()>0*/
                     ) {
                         return true;
                     } else {
