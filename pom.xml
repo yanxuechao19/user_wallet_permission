@@ -181,7 +181,7 @@
                             <!-- <transformers >-->
                             <transformers combine.children="append">
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.commercial.CommercialReduce</mainClass> <!-- 替换为你的主类全路径 -->
+                                    <mainClass>com.frog.regist.regist_with_idfdt</mainClass> <!-- 替换为你的主类全路径 -->
                                 </transformer>
                             </transformers>
 
