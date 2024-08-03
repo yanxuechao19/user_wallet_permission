@@ -162,6 +162,14 @@
             <version>2.13.0</version> <!-- 请检查是否有更新的版本 -->
         </dependency>
 
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>2.4.7</version>
+        </dependency>
+
+
+
     </dependencies>
 
     <build>

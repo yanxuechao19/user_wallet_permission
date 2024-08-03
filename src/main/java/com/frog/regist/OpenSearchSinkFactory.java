@@ -25,17 +25,17 @@ import org.elasticsearch.client.Requests;
 import java.io.Serializable;
 
 public class OpenSearchSinkFactory implements Serializable {
-    public static ElasticsearchSink<Tuple4<Long, String, String, Long>> createOpenSearchSink(ElasticSearchSinkConfig elasticSearchSinkConfig) {
-        ElasticsearchSink.Builder<Tuple4<Long, String, String, Long>> elasticSearchBuilder = new ElasticsearchSink.Builder<>(elasticSearchSinkConfig.getHttpHosts()
-                , new ElasticsearchSinkFunction<Tuple4<Long, String, String, Long>>() {
-            public IndexRequest createIndexRequest(Tuple4<Long, String, String, Long> element) {
+    public static ElasticsearchSink<String> createOpenSearchSink(ElasticSearchSinkConfig elasticSearchSinkConfig) {
+        ElasticsearchSink.Builder<String> elasticSearchBuilder = new ElasticsearchSink.Builder<>(elasticSearchSinkConfig.getHttpHosts()
+                , new ElasticsearchSinkFunction<String>() {
+            public IndexRequest createIndexRequest(String element) {
                 return Requests.indexRequest()
                         .index(elasticSearchSinkConfig.getIndexName())
                         .source(element, elasticSearchSinkConfig.getxContentType());
             }
 
             @Override
-            public void process(Tuple4<Long, String, String, Long> element, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
+            public void process(String element, RuntimeContext runtimeContext, RequestIndexer requestIndexer) {
                 requestIndexer.add(createIndexRequest(element));
             }
         });

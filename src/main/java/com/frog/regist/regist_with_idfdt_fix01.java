@@ -2,10 +2,6 @@ package com.frog.regist;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.JSONValidator;
-import com.frog.source.KafkaUtil;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.state.ValueState;
@@ -19,6 +15,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.CoProcessFunction;
+import org.apache.flink.streaming.connectors.elasticsearch7.ElasticsearchSink;
 import org.apache.flink.util.Collector;
 import org.apache.http.HttpHost;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -35,12 +32,8 @@ import org.elasticsearch.common.xcontent.XContentType;
 //验证接口数据 用于获取注册用户id
 //用户国家数据 用于决定向哪个地区投放的时间 可以直接从广告中的country获取 GB 英国  US 美国
 //广告数据    只对指定的广告渠道进来的用户进行推文投放
-public class regist_with_idfdt_fix {
+public class regist_with_idfdt_fix01 {
     public static void main(String[] args) throws Exception {
-
-
-
-
         //StreamExecutionEnvironment env = new StreamExecutionEnvironment();
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         // TODO 1. 读取业务主流
@@ -52,12 +45,9 @@ public class regist_with_idfdt_fix {
         //DataStreamSource<String> ds_kochava = env.addSource(KafkaUtil.getKafkaConsumer(topic2, groupId2));
         DataStreamSource<String> ds_gateway = env.readTextFile("D:\\code\\user_wallet_permission\\input\\gateway.txt");
         DataStreamSource<String> ds_kochava = env.readTextFile("D:\\code\\user_wallet_permission\\input\\kochava_original_data.txt");
-
         //todo 2.数据结构转化
 
-        SingleOutputStreamOperator<JSONObject> json_gateway = ds_gateway.map(
-                JSON::parseObject
-        );
+        SingleOutputStreamOperator<JSONObject> json_gateway = ds_gateway.map(JSON::parseObject);
         SingleOutputStreamOperator<JSONObject> json_kochava = ds_kochava.map(JSON::parseObject);
         //creative_id,
         //ef_idfdt
@@ -238,33 +228,36 @@ public class regist_with_idfdt_fix {
             }
         });
 
-
         SingleOutputStreamOperator<String> mapstream = filtercreateid.map(new MapFunction<Tuple4<Long, String, String, Long>, String>() {
             @Override
             public String map(Tuple4<Long, String, String, Long> longStringStringLongTuple4) throws Exception {
-            //  <user_id,creative_id,country,ts>
+                //  <user_id,creative_id,country,ts>
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("user_id",longStringStringLongTuple4.f0);
                 jsonObject.put("creative_id",longStringStringLongTuple4.f1);
                 jsonObject.put("country",longStringStringLongTuple4.f2);
                 jsonObject.put("ts",longStringStringLongTuple4.f3);
+
                 return jsonObject.toString();
             }
         });
 
 
+        HttpHost httpHosts = new HttpHost("vpc-prod-opensearch-e6zsd5jz7y24fgwlhws6gwofzm.us-east-1.es.amazonaws.com", 443, "https");
+        XContentType xContentType = XContentType.JSON;
+        boolean auth = true; // 假设需要认
+        // 使用ElasticSearchSinkConfig.Builder来构建ElasticSearchSinkConfig实例
         ElasticSearchSinkConfig config = new ElasticSearchSinkConfig.Builder()
-                .withAuth(true)
-                .withHttpHost(new HttpHost("vpc-prod-opensearch-e6zsd5jz7y24fgwlhws6gwofzm.us-east-1.es.amazonaws.com", 443, "https"))
+                .withHttpHost(httpHosts)
                 .withIndexName("regist_kochava")
-                .withXContentType(XContentType.JSON)
+                .withXContentType(xContentType)
                 .withUsername("prod-opensearch-syncDB-user")
                 .withPassword("sFZNHvVq$vHpg8H9")
+                .withAuth(auth)
                 .build();
-        mapstream.addSink(OpenSearchSinkFactory.createOpenSearchSink(config));
-
+        OpenSearchSinkFactory openSearchSinkFactory = new OpenSearchSinkFactory();
+        ElasticsearchSink<String> openSearchSink = openSearchSinkFactory.createOpenSearchSink(config);
+        mapstream.addSink(openSearchSink);
         env.execute();
     }
-
-
 }
