@@ -1,6 +1,7 @@
 package com.frog.regist;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONValidator;
 import com.frog.source.KafkaUtil;
@@ -14,7 +15,10 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.ConnectedStreams;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -22,6 +26,8 @@ import org.apache.flink.streaming.api.functions.co.CoProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.http.HttpHost;
 import org.elasticsearch.common.xcontent.XContentType;
+
+import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
 
 /**
  * packageName com.frog.regist
@@ -43,22 +49,61 @@ public class regist_with_idfdt_fix {
 
         //StreamExecutionEnvironment env = new StreamExecutionEnvironment();
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        // TODO 1. 读取业务主流
+        // TODO 0. 读取业务主流
         String topic1 = "gateway_data";
-        String groupId1 = "gateway_data_0802";
+        String groupId1 = "gateway_data_0812";
         String topic2 = "kochava";
-        String groupId2 = "kochava_0802";
-        //DataStreamSource<String> ds_gateway = env.addSource(KafkaUtil.getKafkaConsumer(topic1, groupId1));
-        //DataStreamSource<String> ds_kochava = env.addSource(KafkaUtil.getKafkaConsumer(topic2, groupId2));
-        DataStreamSource<String> ds_gateway = env.readTextFile("D:\\code\\user_wallet_permission\\input\\gateway.txt");
-        DataStreamSource<String> ds_kochava = env.readTextFile("D:\\code\\user_wallet_permission\\input\\kochava_original_data.txt");
+        String groupId2 = "kochava_0812";
+        DataStreamSource<String> ds_gateway = env.addSource(KafkaUtil.getKafkaConsumer(topic1, groupId1));
+        DataStreamSource<String> ds_kochava = env.addSource(KafkaUtil.getKafkaConsumer(topic2, groupId2));
+        //DataStreamSource<String> ds_gateway = env.readTextFile("D:\\code\\user_wallet_permission\\input\\gateway.txt");
+       // DataStreamSource<String> ds_kochava = env.readTextFile("D:\\code\\user_wallet_permission\\input\\kochava_original_data.txt");
 
+        //todo 1.数据初始清洗 过滤不符合json结构的数据
+        // 使用filter来过滤掉无法转换为JSON的字符串
+        DataStream<String> ds_gateway_filter = ds_gateway.filter(new FilterFunction<String>() {
+            private final ObjectMapper objectMapper = new ObjectMapper();
+
+            @Override
+            public boolean filter(String value) throws Exception {
+                try {
+                    // 尝试将字符串转换为JsonNode对象
+                    JsonNode jsonNode = objectMapper.readTree(value);
+                    // 这里可以添加更复杂的条件来检查JSON的结构或内容
+                    // 例如：jsonNode.has("someField")
+                    return true; // 如果转换成功，则保留该字符串
+                } catch (Exception e) {
+                    // 如果转换失败，则捕获异常并返回false，从而过滤掉该字符串
+                    return false;
+                }
+            }
+        });
+
+        // 使用filter来过滤掉无法转换为JSON的字符串
+        DataStream<String> ds_kochava_filter = ds_kochava.filter(new FilterFunction<String>() {
+            private final ObjectMapper objectMapper = new ObjectMapper();
+
+            @Override
+            public boolean filter(String value) throws Exception {
+                try {
+                    // 尝试将字符串转换为JsonNode对象
+                    JsonNode jsonNode = objectMapper.readTree(value);
+                    // 这里可以添加更复杂的条件来检查JSON的结构或内容
+                    // 例如：jsonNode.has("someField")
+                    return true; // 如果转换成功，则保留该字符串
+                } catch (Exception e) {
+                    // 如果转换失败，则捕获异常并返回false，从而过滤掉该字符串
+                    return false;
+                }
+            }
+        });
         //todo 2.数据结构转化
 
-        SingleOutputStreamOperator<JSONObject> json_gateway = ds_gateway.map(
+        SingleOutputStreamOperator<JSONObject> json_gateway = ds_gateway_filter.map(
                 JSON::parseObject
         );
-        SingleOutputStreamOperator<JSONObject> json_kochava = ds_kochava.map(JSON::parseObject);
+
+        SingleOutputStreamOperator<JSONObject> json_kochava = ds_kochava_filter.map(JSON::parseObject);
         //creative_id,
         //ef_idfdt
         //todo 3.点击广告数据为主流 对主流数据ETL.留下指定的广告数据  国家过滤 主键过滤ef_idfdt,且只有create_id不为空的才能往下发
@@ -161,7 +206,6 @@ public class regist_with_idfdt_fix {
                 return Tuple3.of(
                         jsonObject.getJSONObject("responseData").getJSONObject("data").getJSONObject("dataObject").getLong("id"),
                         jsonObject.getJSONObject("responseData").getJSONObject("data").getJSONObject("dataObject").getString("idfdt"),
-                        //Calendar.getInstance().getTimeInMillis());
                         jsonObject.getLong("responseTime"));
             }
         });
@@ -263,6 +307,7 @@ public class regist_with_idfdt_fix {
                 .build();
         mapstream.addSink(OpenSearchSinkFactory.createOpenSearchSink(config));
 
+        //mapstream.print();
         env.execute();
     }
 

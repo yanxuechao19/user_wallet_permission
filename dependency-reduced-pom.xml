@@ -29,7 +29,7 @@
               </filters>
               <transformers>
                 <transformer>
-                  <mainClass>com.frog.regist.regist_with_idfdt</mainClass>
+                  <mainClass>com.frog.regist.regist_with_idfdt_fix</mainClass>
                 </transformer>
               </transformers>
             </configuration>
